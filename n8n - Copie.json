@@ -1,0 +1,171 @@
+{
+    "name": "Douane Auction Viewer Automation",
+    "nodes": [
+      {
+        "parameters": { "rule": "0 */12 * * *" },
+        "id": "1",
+        "name": "Trigger (Every 12h)",
+        "type": "n8n-nodes-base.cron",
+        "typeVersion": 1,
+        "position": [240, 280]
+      },
+      {
+        "parameters": {
+          "url": "https://example.com/douane-auctions",
+          "responseFormat": "string"
+        },
+        "id": "2",
+        "name": "Get Douane Page",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [460, 280]
+      },
+      {
+        "parameters": {
+          "extractionValues": {
+            "values": [
+              { "key": "pdf_url", "cssSelector": "a[href$=\".pdf\"]", "attribute": "href" }
+            ]
+          }
+        },
+        "id": "3",
+        "name": "Extract PDF Links",
+        "type": "n8n-nodes-base.htmlExtract",
+        "typeVersion": 1,
+        "position": [660, 280]
+      },
+      {
+        "parameters": {
+          "functionCode": "// For testing: return a single hardcoded PDF URL\n// After testing, uncomment the original code below\nreturn [{\n  json: {\n    pdf_url: \"https://www.douane.gov.tn/wp-content/uploads/2025/08/2025-08-07_AV_OP_Kef_N%C2%B003-2025.pdf\"\n  }\n}];\n\n// Original code (uncomment after testing):\n// const processed = this.getWorkflowStaticData('global').processed || [];\n// return items.filter(item => !processed.includes(item.json.pdf_url));"
+        },
+        "id": "4",
+        "name": "Filter New PDFs",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [860, 280]
+      },
+      {
+        "parameters": {
+          "url": "={{$json[\"pdf_url\"]}}",
+          "responseFormat": "file",
+          "options": { "fullResponse": true }
+        },
+        "id": "5",
+        "name": "Download PDF",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [1060, 280]
+      },
+      {
+        "parameters": { "binaryPropertyName": "data" },
+        "id": "6",
+        "name": "Extract Text from PDF",
+        "type": "n8n-nodes-base.pdfExtract",
+        "typeVersion": 1,
+        "position": [1260, 280]
+      },
+      {
+        "parameters": {
+          "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyAXGVOXdE0hLQpEPMvdeXdPV2JEWwRHhA4",
+          "method": "POST",
+          "responseFormat": "json",
+          "jsonParameters": true,
+          "options": {},
+          "body": {
+            "contents": [
+              {
+                "parts": [
+                  {
+                    "text": "You are a data extraction assistant. Extract all auction items from the following text and return only JSON in this exact format:\n[\n  { \"title\": \"\", \"short_description\": \"\", \"full_description\": \"\", \"date\": \"\", \"pdf_url\": \"{{$json[\"pdf_url\"]}}\" }\n]\n\nHere is the text:\n{{$json[\"text\"]}}"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "id": "7",
+        "name": "Gemini Structuring",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [1460, 280]
+      },
+      {
+        "parameters": {
+          "functionCode": "let data = [];\ntry {\n  data = JSON.parse(items[0].json.candidates[0].content.parts[0].text);\n} catch(e) {\n  data = [];\n}\nreturn data.map(d => ({json: d}));"
+        },
+        "id": "8",
+        "name": "Parse Gemini JSON",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [1660, 280]
+      },
+      {
+        "parameters": {
+          "url": "https://api.unsplash.com/search/photos?query={{$json[\"title\"]}}",
+          "responseFormat": "json",
+          "jsonParameters": true,
+          "headerParametersJson": "{\"Authorization\": \"Client-ID 79KLq1qRy28O2NbVM_1iFFc2kIEoxKAYFoQsq7WSTpw\"}"
+        },
+        "id": "9",
+        "name": "Unsplash Image Search",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [1860, 280]
+      },
+      {
+        "parameters": {
+          "functionCode": "const firstImage = $json.results && $json.results.length > 0 ? $json.results[0].urls.small : null;\nitem.json.image_url = firstImage;\nreturn item;"
+        },
+        "id": "10",
+        "name": "Attach Image URL",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [2060, 280]
+      },
+      {
+        "parameters": {
+          "url": "http://localhost:8000/api/listings/",
+          "method": "POST",
+          "jsonParameters": true,
+          "options": {},
+          "body": {
+            "title": "={{$json[\"title\"]}}",
+            "short_description": "={{$json[\"short_description\"]}}",
+            "full_description": "={{$json[\"full_description\"]}}",
+            "date": "={{$json[\"date\"]}}",
+            "pdf_url": "={{$json[\"pdf_url\"]}}",
+            "image_url": "={{$json[\"image_url\"]}}"
+          }
+        },
+        "id": "11",
+        "name": "Send to Django",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [2260, 280]
+      },
+      {
+        "parameters": {
+          "functionCode": "const processed = this.getWorkflowStaticData('global').processed || [];\nprocessed.push($json[\"pdf_url\"]);\nthis.getWorkflowStaticData('global').processed = processed;\nreturn items;"
+        },
+        "id": "12",
+        "name": "Mark as Processed",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [2460, 280]
+      }
+    ],
+    "connections": {
+      "1": { "main": [ [ { "node": "Get Douane Page", "type": "main", "index": 0 } ] ] },
+      "2": { "main": [ [ { "node": "Extract PDF Links", "type": "main", "index": 0 } ] ] },
+      "3": { "main": [ [ { "node": "Filter New PDFs", "type": "main", "index": 0 } ] ] },
+      "4": { "main": [ [ { "node": "Download PDF", "type": "main", "index": 0 } ] ] },
+      "5": { "main": [ [ { "node": "Extract Text from PDF", "type": "main", "index": 0 } ] ] },
+      "6": { "main": [ [ { "node": "Gemini Structuring", "type": "main", "index": 0 } ] ] },
+      "7": { "main": [ [ { "node": "Parse Gemini JSON", "type": "main", "index": 0 } ] ] },
+      "8": { "main": [ [ { "node": "Unsplash Image Search", "type": "main", "index": 0 } ] ] },
+      "9": { "main": [ [ { "node": "Attach Image URL", "type": "main", "index": 0 } ] ] },
+      "10": { "main": [ [ { "node": "Send to Django", "type": "main", "index": 0 } ] ] },
+      "11": { "main": [ [ { "node": "Mark as Processed", "type": "main", "index": 0 } ] ] }
+    }
+  }
+  

@@ -1,0 +1,76 @@
+# ===== General OS/Editor =====
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+.python-version
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.ruff_cache/
+
+# ===== Environments =====
+.env
+.env.*
+env/
+venv/
+.venv/
+ENV/
+
+# ===== Django =====
+backend/db.sqlite3
+backend/db.sqlite3-journal
+backend/media/
+backend/staticfiles/
+backend/**/migrations/**/__pycache__/
+backend/**/migrations/**/.*
+# Keep migration files themselves (do not ignore *.py), only caches
+!backend/**/migrations/*.py
+
+# Local settings overrides (if any)
+backend/**/local_settings.py
+
+# ===== Logs =====
+*.log
+logs/
+
+# ===== Node/React =====
+frontend/node_modules/
+frontend/build/
+frontend/.cache/
+frontend/.parcel-cache/
+frontend/.next/
+frontend/.nuxt/
+frontend/coverage/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/.env
+frontend/.env.*
+
+# ===== Tooling/Hosting =====
+.vercel/
+.netlify/
+.render/
+
+# ===== Misc =====
+*.bak
+*.tmp
+*.temp
+*.orig
+*.rej
+
+

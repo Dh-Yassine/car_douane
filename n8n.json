@@ -1,0 +1,398 @@
+{
+  "name": "Car Douane PDF Processing Workflow",
+    "nodes": [
+      {
+      "parameters": {},
+      "id": "808819c0-2f2f-4d30-908f-c0d62e06bfa0",
+        "name": "Trigger (Every 12h)",
+        "type": "n8n-nodes-base.cron",
+        "typeVersion": 1,
+      "position": [
+        -2528,
+        -96
+      ],
+      "notes": "Triggers the workflow every 12 hours"
+      },
+      {
+        "parameters": {
+        "functionCode": "// Scan for new TXT files in the root folder\nconst fs = require('fs');\nconst path = require('path');\n\n// Get the root directory path (CAR_DOUANE folder)\nconst rootDir = process.cwd();\n\n// Look for TXT files that match the pattern: *-listings-*.txt\nconst txtFiles = [];\ntry {\n  const files = fs.readdirSync(rootDir);\n  \n  for (const file of files) {\n    if (file.endsWith('.txt') && !file.includes('debug_')) {\n      const filePath = path.join(rootDir, file);\n      const stats = fs.statSync(filePath);\n      \n      txtFiles.push({\n        filename: file,\n        filepath: filePath,\n        size: stats.size,\n        modified: stats.mtime,\n        created: stats.birthtime\n      });\n    }\n  }\n  \n  // Sort by modification time (newest first)\n  txtFiles.sort((a, b) => b.modified - a.modified);\n  \n  console.log(`Found ${txtFiles.length} TXT files in root directory`);\n  \n} catch (error) {\n  console.error('Error scanning directory:', error);\n}\n\n// Return the TXT files found\nreturn txtFiles.map(file => ({\n  json: {\n    txt_filename: file.filename,\n    txt_filepath: file.filepath,\n    txt_size: file.size,\n    txt_modified: file.modified,\n    txt_created: file.created\n  }\n}));"
+        },
+      "id": "b63441f0-40e1-4000-aacf-f5512ad14d3a",
+      "name": "Scan for TXT Files",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+      "position": [
+        -2064,
+        -112
+      ],
+      "notes": "Scans the root folder for new TXT files from Django admin OCR processing"
+      },
+      {
+        "parameters": {
+        "functionCode": "// Filter TXT files to process (avoid already processed ones)\nconst processedFiles = this.getWorkflowStaticData('global').processedFiles || [];\nconst currentFile = $json.txt_filename;\n\n// Check if this file has already been processed\nif (processedFiles.includes(currentFile)) {\n  console.log(`File ${currentFile} already processed, skipping...`);\n  return [];\n}\n\n// Check if file is recent (within last 24 hours)\nconst fileAge = Date.now() - new Date($json.txt_modified).getTime();\nconst oneDay = 24 * 60 * 60 * 1000;\n\nif (fileAge > oneDay) {\n  console.log(`File ${currentFile} is too old (${Math.round(fileAge/oneDay)} days), skipping...`);\n  return [];\n}\n\nconsole.log(`File ${currentFile} is new and will be processed`);\nreturn [{\n  json: {\n    txt_filename: $json.txt_filename,\n    txt_filepath: $json.txt_filepath,\n    txt_size: $json.txt_size,\n    txt_modified: $json.txt_modified,\n    txt_created: $json.txt_created,\n    should_process: true\n  }\n}];"
+        },
+      "id": "80019871-5261-4433-8ea1-822ce8324fbf",
+      "name": "Filter New TXT Files",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+      "position": [
+        -1664,
+        -112
+      ],
+      "notes": "Filters TXT files to avoid processing duplicates and old files"
+      },
+      {
+        "parameters": {
+        "filePath": "={{$json[\"txt_filepath\"]}}"
+        },
+      "id": "b557fbf6-fc0c-4e70-bd0e-85b750c472c7",
+      "name": "Read Text File",
+        "type": "n8n-nodes-base.readBinaryFile",
+        "typeVersion": 1,
+      "position": [
+        -1472,
+        -112
+      ],
+      "notes": "Reads the text content from the TXT file"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract text content from the binary file data\nconst txtFilepath = $json.txt_filepath;\nconst txtData = $json.data;\n\nlet extractedText = '';\n\nif (txtData) {\n  try {\n    // Convert binary data to string (assuming UTF-8 encoding)\n    extractedText = Buffer.from(txtData).toString('utf-8');\n    console.log(`Successfully extracted ${extractedText.length} characters from ${txtFilepath}`);\n  } catch (error) {\n    console.error(`Error reading text from ${txtFilepath}:`, error);\n    extractedText = `Error reading text from ${txtFilepath}: ${error.message}`;\n  }\n} else {\n  console.error(`No text data available for extraction from ${txtFilepath}`);\n  extractedText = `No text data available for extraction from ${txtFilepath}`;\n}\n\nreturn [{\n  json: {\n    text: extractedText,\n    txt_filename: $json.txt_filename,\n    txt_filepath: txtFilepath,\n    txt_size: $json.txt_size,\n    extracted: true,\n    text_length: extractedText.length\n  }\n}];"
+      },
+      "id": "496a6591-1fbb-4747-8691-34dca56e0c10",
+      "name": "Extract Text from TXT",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1264,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Build AI prompt for Gemini API\nconst filename = $json.txt_filename || 'auction.txt';\nconst textLength = $json.text_length || 0;\nconst text = $json.text || '';\n\nconst systemPrompt = `You are an expert at parsing Tunisian customs auction text files. Your task is to extract structured data and return ONLY a valid JSON object. Do not include any explanations, markdown, or additional text - just the JSON.`;\n\nconst userPrompt = `CONTEXT:\n- Tunisian customs auction listings (vehicles, goods, tools, etc.)\n- Extract individual items, standardize dates to YYYY-MM-DD format\n- Normalize whitespace and clean text\n- Ensure all required fields are present\n- Set total_listings to the actual number of extracted items\n\nREQUIRED JSON SCHEMA:\n{\n  \"source_txt\": \"filename.txt\",\n  \"auction_date\": \"YYYY-MM-DD\",\n  \"city\": \"City Name\",\n  \"total_listings\": 0,\n  \"listings\": [\n    {\n      \"title\": \"Item Title (e.g., 'Mercedes C220, 2010')\",\n      \"short_description\": \"Brief description (e.g., 'Auction on Sept 15, 2025')\",\n      \"full_description\": \"Complete description with all details\",\n      \"listing_type\": \"vehicle|goods|tools|other\",\n      \"lot_number\": \"Lot number if available\",\n      \"brand\": \"Brand name if applicable\",\n      \"model\": \"Model name if applicable\",\n      \"year\": \"Year if applicable\",\n      \"condition\": \"Condition description if available\",\n      \"estimated_value\": \"Value if mentioned\",\n      \"city\": \"City name\",\n      \"auction_date\": \"YYYY-MM-DD\",\n      \"additional_details\": \"Any other relevant information\"\n    }\n  ]\n}\n\nSOURCE FILE: ${filename}\nTEXT LENGTH: ${textLength} characters\nTEXT CONTENT:\n${text}\n\nReturn ONLY the JSON object following the schema above. If any data is missing, use \"N/A\".`;\n\nreturn [{\n  json: {\n    system: systemPrompt,\n    user: userPrompt,\n    filename: filename,\n    text_length: textLength\n  }\n}];"
+      },
+      "id": "1fefc4f8-2af7-42c2-ae84-79cf05c2335e",
+      "name": "Build AI Prompt",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1104,
+        -288
+      ]
+      },
+      {
+        "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={{$credentials.googleGeminiApi.apiKey}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contents",
+              "value": "=[{\n  \"parts\": [\n    {\n      \"text\": \"{{ $json.system }}\\n\\n{{ $json.user }}\"\n    }\n  ]\n}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gemini-api-call",
+      "name": "Gemini API Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -912,
+        16
+      ],
+      "notes": "Calls Google Gemini API directly using HTTP Request"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract response from Gemini API\nconst response = $json;\nlet extractedText = '';\n\nif (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts) {\n  extractedText = response.candidates[0].content.parts[0].text;\n  console.log('Successfully extracted response from Gemini API');\n} else {\n  console.error('Unexpected response format from Gemini API:', response);\n  extractedText = 'No response from Gemini API';\n}\n\n// Try to parse JSON from the response\nlet parsedData = null;\ntry {\n  parsedData = JSON.parse(extractedText);\n  console.log('Successfully parsed JSON from Gemini response');\n} catch (error) {\n  console.error('Failed to parse JSON from Gemini response:', error);\n  console.log('Raw response text:', extractedText);\n  parsedData = null;\n}\n\nreturn [{\n  json: {\n    raw_response: extractedText,\n    parsed_data: parsedData,\n    filename: $item(0,\"Build AI Prompt\").$json.filename,\n    text_length: $item(0,\"Build AI Prompt\").$json.text_length\n  }\n}];"
+      },
+      "id": "035a8753-a343-4abb-96e8-07b8318a0381",
+      "name": "Parse Gemini Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Validate and finalize JSON from Gemini\nlet obj = $json.parsed_data; \nif(!obj) obj = {};\n\nfunction ensure(o,k,v){ \n  if(o[k]===undefined||o[k]===null||o[k]==='') o[k]=v; \n}\n\nensure(obj,'source_txt',$item(0,\"Build AI Prompt\").$json.filename || 'auction.txt');\nensure(obj,'auction_date','N/A');\nensure(obj,'city','N/A');\n\nif(!Array.isArray(obj.listings)) obj.listings = [];\nobj.total_listings = obj.listings.length;\n\nobj.listings = obj.listings.map(l => ({\n  title: l.title ?? 'N/A', \n  short_description: l.short_description ?? 'N/A', \n  full_description: l.full_description ?? 'N/A', \n  listing_type: l.listing_type ?? 'other', \n  lot_number: l.lot_number ?? 'N/A', \n  brand: l.brand ?? 'N/A', \n  model: l.model ?? 'N/A', \n  year: l.year ?? 'N/A', \n  condition: l.condition ?? 'N/A', \n  estimated_value: l.estimated_value ?? 'N/A', \n  city: l.city ?? (obj.city || 'N/A'), \n  auction_date: l.auction_date ?? (obj.auction_date || 'N/A'), \n  additional_details: l.additional_details ?? 'N/A'\n}));\n\nconsole.log(`Validated JSON with ${obj.total_listings} listings`);\n\nreturn [{ json: obj }];"
+      },
+      "id": "f17a182a-29c8-42a2-b45b-8874de909afd",
+      "name": "Validate & Finalize JSON",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+      "position": [
+        -48,
+        -544
+      ]
+    },
+    {
+      "parameters": {
+        "fileName": "={{$item(0,\"Build AI Prompt\").$json.filename.replace(/\\.txt$/i,'')}}-listings-{{$now.format(\"YYYY-MM-DD-HH-mm-ss\")}}.json",
+        "dataPropertyName": "json",
+        "options": {}
+      },
+      "id": "fe98b61e-f08f-4b52-962e-e05360594432",
+      "name": "Write JSON File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        64
+      ]
+      },
+      {
+        "parameters": {
+        "functionCode": "// Create auction data for Django API\nconst data = $json.listings.map((listing, index) => ({\n  title: listing.title,\n  short_description: listing.short_description,\n  full_description: listing.full_description,\n  listing_type: listing.listing_type,\n  brand: listing.brand,\n  model: listing.model,\n  year: listing.year !== 'N/A' ? parseInt(listing.year) : parseFloat(listing.year) : null,\n  starting_price: listing.estimated_value !== 'N/A' ? parseFloat(listing.estimated_value.replace(/[^0-9.]/g, '')) : 0,\n  guarantee_amount: listing.estimated_value !== 'N/A' ? parseFloat(listing.estimated_value.replace(/[^0-9.]/g, '')) * 0.1 : 0,\n  lot_number: listing.lot_number !== 'N/A' ? listing.lot_number : String(index + 1).padStart(3, '0'),\n  fuel_type: 'other',\n  txt_source: $item(0,\"Extract Text from TXT\").$json.txt_filename\n}));\n\nconsole.log(`Created ${data.length} auction data entries`);\n\nreturn data.map(d => ({json: d}));"
+        },
+      "id": "dabd9328-11a0-4117-8553-9e2f031930cc",
+        "name": "Create Auction Data",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+      "position": [
+        112,
+        -240
+      ]
+      },
+      {
+        "parameters": {
+          "url": "https://api.unsplash.com/search/photos?query={{$json[\"brand\"]}}%20{{$json[\"model\"]}}%20car%20automotive&per_page=1&orientation=landscape&content_filter=high",
+        "options": {}
+        },
+      "id": "8f95fd3b-51fd-4d4c-b936-6e4848b07482",
+        "name": "Unsplash Image Search",
+        "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        48
+      ]
+      },
+      {
+        "parameters": {
+          "functionCode": "const firstImage = $json.results && $json.results.length > 0 ? $json.results[0].urls.small : null;\n$json.image_url = firstImage;\nreturn $json;"
+        },
+      "id": "da2448ef-c337-4d86-8dfd-a85e2ae33292",
+        "name": "Attach Image URL",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+      "position": [
+        480,
+        -224
+      ]
+      },
+      {
+        "parameters": {
+        "method": "POST",
+          "url": "http://127.0.0.1:8000/api/listings/",
+          "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "f467081d-5f8e-4215-8bb1-54fbe6ee6375",
+        "name": "Send to Django",
+        "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        704,
+        48
+      ]
+      },
+      {
+        "parameters": {
+        "functionCode": "// Mark file as processed and log success\nconst processedFiles = this.getWorkflowStaticData('global').processedFiles || [];\nconst filename = $item(0,\"Extract Text from TXT\").$json.txt_filename;\n\nif (!processedFiles.includes(filename)) {\n  processedFiles.push(filename);\n  this.getWorkflowStaticData('global').processedFiles = processedFiles;\n  console.log(`Marked ${filename} as processed`);\n}\n\n// Log processing summary\nconst totalListings = $item(0,\"Validate & Finalize JSON\").$json.total_listings || 0;\nconst successCount = $json.length || 0;\n\nconsole.log(`✅ Processing complete for ${filename}`);\nconsole.log(`📊 Extracted ${totalListings} listings`);\nconsole.log(`🚀 Sent ${successCount} listings to Django API`);\n\nreturn [{\n  json: {\n    filename: filename,\n    total_listings: totalListings,\n    processed_count: successCount,\n    status: 'completed'\n  }\n}];"
+        },
+      "id": "8b6feceb-39f2-4435-a93f-d4cfa168c408",
+        "name": "Mark as Processed",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+      "position": [
+        848,
+        -272
+      ]
+      }
+    ],
+  "pinData": {},
+    "connections": {
+    "Trigger (Every 12h)": {
+      "main": [
+        [
+          {
+            "node": "Scan for TXT Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scan for TXT Files": {
+      "main": [
+        [
+          {
+            "node": "Filter New TXT Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter New TXT Files": {
+      "main": [
+        [
+          {
+            "node": "Read Text File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Text File": {
+      "main": [
+        [
+          {
+            "node": "Extract Text from TXT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text from TXT": {
+      "main": [
+        [
+          {
+            "node": "Build AI Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build AI Prompt": {
+      "main": [
+        [
+          {
+            "node": "Gemini API Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini API Call": {
+      "main": [
+        [
+          {
+            "node": "Parse Gemini Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gemini Response": {
+      "main": [
+        [
+          {
+            "node": "Validate & Finalize JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Finalize JSON": {
+      "main": [
+        [
+          {
+            "node": "Write JSON File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write JSON File": {
+      "main": [
+        [
+          {
+            "node": "Create Auction Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Auction Data": {
+      "main": [
+        [
+          {
+            "node": "Unsplash Image Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unsplash Image Search": {
+      "main": [
+        [
+          {
+            "node": "Attach Image URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Image URL": {
+      "main": [
+        [
+          {
+            "node": "Send to Django",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Django": {
+      "main": [
+        [
+          {
+            "node": "Mark as Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3f997577-b9b5-4d3d-81e7-2ade4f91f744",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2ee4ba90b418b550bdfa1778ee0c35ff5a897ce6257c9c5b51486a36018812e0"
+  },
+  "id": "a15rsi9jgH6pWzPY",
+  "tags": []
+}

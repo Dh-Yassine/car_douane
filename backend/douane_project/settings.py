@@ -31,6 +31,7 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,192.168.1.1
 
 # Add Render domain to allowed hosts
 ALLOWED_HOSTS.append('*.onrender.com')
+ALLOWED_HOSTS.append('*.vercel.app')
 
 # Application definition
 
@@ -165,8 +166,15 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings for development
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = True  # Keep this for now, we'll lock it down after testing
 CORS_ALLOW_CREDENTIALS = True
+
+# CORS allowed origins for production (add your Vercel domain here)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://car-douane-frontend.vercel.app",  # Add your actual Vercel domain
+]
 
 # Additional CORS settings for development
 CORS_ALLOW_METHODS = [

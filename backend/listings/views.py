@@ -10,24 +10,19 @@ import json
 from urllib.parse import urlparse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.shortcuts import render
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.contrib.auth.models import User
+from django.http import JsonResponse
 from .models import Listing, PDFUpload, AuctionGroup
 from .serializers import (
     ListingSerializer, ListingListSerializer, ListingCreateSerializer, PDFUploadSerializer,
     PDFUploadCreateSerializer, AuctionGroupSerializer
 )
+from .mixins import CORSViewSetMixin
 
 
-class CORSViewSetMixin:
-    """Mixin to add CORS headers to all ViewSet responses"""
-    def finalize_response(self, request, response, *args, **kwargs):
-        response = super().finalize_response(request, response, *args, **kwargs)
-        response["Access-Control-Allow-Origin"] = "*"
-        response["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
-        return response
-
-
-@method_decorator(csrf_exempt, name='dispatch')
 class ListingViewSet(CORSViewSetMixin, viewsets.ModelViewSet):
     """ViewSet for auction listings"""
     queryset = Listing.objects.select_related('pdf_upload', 'auction_group').all()
@@ -593,3 +588,48 @@ class AuctionGroupViewSet(CORSViewSetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = AuctionGroup.objects.all()
     serializer_class = AuctionGroupSerializer
     ordering = ['order']
+
+def create_superuser_api(request):
+    """Create superuser via API endpoint"""
+    if request.method == 'POST':
+        try:
+            # Check if superuser already exists
+            if User.objects.filter(is_superuser=True).exists():
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Superuser already exists!',
+                    'admin_url': 'https://car-douane.onrender.com/admin/'
+                })
+            
+            # Create superuser
+            username = 'admin'
+            email = 'admin@cardouane.tn'
+            password = 'admin123456'
+            
+            user = User.objects.create_superuser(
+                username=username,
+                email=email,
+                password=password
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Superuser created successfully!',
+                'credentials': {
+                    'username': username,
+                    'email': email,
+                    'password': password
+                },
+                'admin_url': 'https://car-douane.onrender.com/admin/'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Error creating superuser: {str(e)}'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'message': 'Use POST method to create superuser'
+    })

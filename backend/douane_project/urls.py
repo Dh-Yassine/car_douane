@@ -19,6 +19,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
+from django.shortcuts import redirect
 
 def cors_test(request):
     """Simple endpoint to test CORS"""
@@ -50,10 +51,31 @@ def api_cors_test(request):
     response["Access-Control-Allow-Headers"] = "Content-Type"
     return response
 
+def api_root(request):
+    """API root endpoint with available endpoints"""
+    return JsonResponse({
+        'message': 'Car Douane API',
+        'version': '1.0.0',
+        'endpoints': {
+            'listings': '/api/listings/',
+            'pdf_uploads': '/api/pdf-uploads/',
+            'auction_groups': '/api/auction-groups/',
+            'admin': '/admin/',
+            'cors_test': '/api/cors-test/',
+        },
+        'documentation': 'API endpoints for Tunisian customs auction listings'
+    })
+
+def root_redirect(request):
+    """Redirect root to API"""
+    return redirect('/api/')
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/cors-test/', cors_test, name='cors_test'),
     path('api/test/', api_cors_test, name='api_cors_test'),
+    path('api/', api_root, name='api_root'),
+    path('', root_redirect, name='root_redirect'),
     path('', include('listings.urls')),
 ]
 

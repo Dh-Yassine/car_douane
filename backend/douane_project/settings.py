@@ -173,7 +173,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://car-douane-frontend.vercel.app",  # Add your actual Vercel domain
+    "https://car-douane.vercel.app",
 ]
 
 # Additional CORS settings for development
@@ -199,7 +199,7 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # CORS settings for DRF
-CORS_URLS_REGEX = r'^api/.*$'
+CORS_URLS_REGEX = r'^/api/.*$'
 CORS_PREFLIGHT_MAX_AGE = 86400
 
 # Ensure CORS headers are added to all responses
@@ -228,3 +228,10 @@ else:
     # Development settings - disable SSL redirects
     SECURE_SSL_REDIRECT = False
     SECURE_PROXY_SSL_HEADER = None
+
+# CSRF trusted origins for cross-site POSTs from frontend
+CSRF_TRUSTED_ORIGINS = [
+    'https://car-douane.vercel.app',
+    'https://*.vercel.app',
+    'https://*.onrender.com',
+]

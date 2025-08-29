@@ -21,9 +21,8 @@ const getApiBaseUrl = () => {
     return `http://${currentHost}:8000`;
   }
   
-  // For production deployments (Vercel, Netlify), use the Render backend
-  // This will be set via environment variable in production
-  return 'https://your-backend-name.onrender.com';
+  // For production deployments (Vercel, Netlify), default to our Render backend
+  return 'https://car-douane.onrender.com';
 };
 
 // Create axios instance with dynamic base URL

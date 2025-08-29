@@ -257,6 +257,7 @@ class ListingViewSet(CORSViewSetMixin, viewsets.ModelViewSet):
         })
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class PDFUploadViewSet(CORSViewSetMixin, viewsets.ModelViewSet):
     """ViewSet for PDF uploads"""
     queryset = PDFUpload.objects.all()

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Admin User - Car Douane</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; background: #0a0f1c; color: #e5e7eb; }
+    .container { background: rgba(255,255,255,0.05); padding: 30px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); }
+    button { background: #3b82f6; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 16px; }
+    button:hover { background: #2563eb; }
+    .result { margin-top: 16px; padding: 12px; border-radius: 8px; display: none; }
+    .success { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.35); }
+    .error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.35); }
+    .credentials { background: rgba(255,255,255,0.06); padding: 10px; border-radius: 8px; margin-top: 10px; }
+    a { color: #93c5fd; }
+  </style>
+  <script>
+    async function createSuperuser() {
+      const apiBase = 'https://car-douane.onrender.com';
+      const result = document.getElementById('result');
+      result.style.display = 'none';
+      try {
+        const resp = await fetch(apiBase + '/api/create-superuser/', { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) {
+          result.className = 'result success';
+          result.innerHTML = `
+            <h3>Admin created</h3>
+            <div class="credentials">
+              <div><strong>Username:</strong> ${data.credentials.username}</div>
+              <div><strong>Email:</strong> ${data.credentials.email}</div>
+              <div><strong>Password:</strong> ${data.credentials.password}</div>
+            </div>
+            <p><a href="${data.admin_url}" target="_blank">Open Django Admin</a></p>
+          `;
+        } else {
+          result.className = 'result error';
+          result.innerHTML = `<h3>${data.message || 'Failed'}</h3><p><a href="${data.admin_url}" target="_blank">Open Django Admin</a></p>`;
+        }
+      } catch (e) {
+        result.className = 'result error';
+        result.textContent = 'Request failed: ' + e.message;
+      }
+      result.style.display = 'block';
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Create Admin User</h1>
+    <p>Click to create the default superuser and open Django admin.</p>
+    <button onclick="createSuperuser()">Create Admin</button>
+    <div id="result" class="result"></div>
+  </div>
+</body>
+</html>
+
+

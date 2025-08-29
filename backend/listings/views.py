@@ -15,6 +15,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth.models import User
 from django.http import JsonResponse
+from django.core.files.base import ContentFile
 from .models import Listing, PDFUpload, AuctionGroup
 from .serializers import (
     ListingSerializer, ListingListSerializer, ListingCreateSerializer, PDFUploadSerializer,
@@ -260,7 +261,7 @@ class ListingViewSet(CORSViewSetMixin, viewsets.ModelViewSet):
 @method_decorator(csrf_exempt, name='dispatch')
 class PDFUploadViewSet(CORSViewSetMixin, viewsets.ModelViewSet):
     """ViewSet for PDF uploads"""
-    queryset = PDFUpload.objects.all()
+    queryset = PDFUpload.objects.filter(file__isnull=False)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['city', 'auction_date', 'processed']
     search_fields = ['filename', 'city']
@@ -511,8 +512,9 @@ class PDFUploadViewSet(CORSViewSetMixin, viewsets.ModelViewSet):
         """Import listings JSON (either multipart file 'file' or raw JSON body)."""
         pdf_upload = self.get_object()
         try:
-            if 'file' in request.FILES:
-                content = request.FILES['file'].read().decode('utf-8')
+            uploaded = request.FILES.get('json_file') or request.FILES.get('file')
+            if uploaded:
+                content = uploaded.read().decode('utf-8')
                 data = json.loads(content)
             else:
                 # Accept application/json body
@@ -529,8 +531,9 @@ class PDFUploadViewSet(CORSViewSetMixin, viewsets.ModelViewSet):
         """Import listings JSON without an existing PDF: creates a PDFUpload then imports."""
         try:
             # Read JSON
-            if 'file' in request.FILES:
-                content = request.FILES['file'].read().decode('utf-8')
+            uploaded = request.FILES.get('json_file') or request.FILES.get('file')
+            if uploaded:
+                content = uploaded.read().decode('utf-8')
                 data = json.loads(content)
             else:
                 data = request.data
@@ -545,15 +548,17 @@ class PDFUploadViewSet(CORSViewSetMixin, viewsets.ModelViewSet):
             if not auction_date:
                 return Response({'error': 'auction_date is required (YYYY-MM-DD)'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Create placeholder PDFUpload
-            pdf_upload = PDFUpload.objects.create(
-                file=None,  # FileField is required, but storage may allow None if null; model not null -> workaround
+            # Create placeholder PDFUpload with a tiny file to satisfy FileField
+            placeholder_bytes = b'JSON import placeholder file'
+            placeholder_name = f"{str(source_txt).rsplit('.', 1)[0] or 'import'}.pdf"
+            pdf_upload = PDFUpload(
                 filename=str(source_txt),
                 city=str(city),
                 auction_date=auction_date,
                 processed=False,
                 total_listings=0,
             )
+            pdf_upload.file.save(placeholder_name, ContentFile(placeholder_bytes), save=True)
         except Exception as e:
             return Response({'error': f'Invalid JSON or metadata: {e}'}, status=status.HTTP_400_BAD_REQUEST)
 

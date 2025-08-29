@@ -7,7 +7,7 @@ import {
   UserCheck, UserX, Calendar, DollarSign, TrendingUp,
   Zap, Target, Database, Server, Activity, Bell
 } from 'lucide-react';
-import { listingsAPI, pdfUploadsAPI } from '../services/api';
+import { listingsAPI, pdfUploadsAPI, api } from '../services/api';
 import './AdminPage.css';
 
 const AdminPage = () => {
@@ -44,12 +44,8 @@ const AdminPage = () => {
 
   const testAPIConnectivity = async () => {
     try {
-      // Use the dynamic API base URL from our service
-      const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-        ? 'http://localhost:8000' 
-        : `http://${window.location.hostname}:8000`;
-      
-      const response = await fetch(`${apiBase}/api/listings/stats/`);
+      const apiBase = api.defaults.baseURL;
+      const response = await fetch(`${apiBase}/api/listings/stats/`, { mode: 'cors' });
       if (response.ok) {
         setApiStatus('connected');
       } else {

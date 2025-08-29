@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.core.files.base import ContentFile
+from django.core.management import call_command
 from .models import Listing, PDFUpload, AuctionGroup
 from .serializers import (
     ListingSerializer, ListingListSerializer, ListingCreateSerializer, PDFUploadSerializer,
@@ -628,3 +629,15 @@ def create_superuser_api(request):
         'success': False,
         'message': 'Use POST method to create superuser'
     })
+
+
+@csrf_exempt
+def run_migrations_api(request):
+    """Run Django migrations via HTTP (temporary bootstrap helper)."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Use POST'}, status=405)
+    try:
+        call_command('migrate', interactive=False, verbosity=1)
+        return JsonResponse({'success': True, 'message': 'Migrations completed'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)

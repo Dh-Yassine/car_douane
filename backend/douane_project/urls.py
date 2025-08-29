@@ -20,7 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
 from django.shortcuts import redirect
-from listings.views import create_superuser_api
+from listings.views import create_superuser_api, run_migrations_api
 
 def cors_test(request):
     """Simple endpoint to test CORS"""
@@ -76,6 +76,7 @@ urlpatterns = [
     path('api/cors-test/', cors_test, name='cors_test'),
     path('api/test/', api_cors_test, name='api_cors_test'),
     path('api/create-superuser/', create_superuser_api, name='create_superuser'),
+    path('api/run-migrations/', run_migrations_api, name='run_migrations'),
     path('api/', api_root, name='api_root'),
     path('', root_redirect, name='root_redirect'),
     path('', include('listings.urls')),

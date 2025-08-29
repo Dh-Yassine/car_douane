@@ -310,19 +310,8 @@ class PDFUploadViewSet(CORSViewSetMixin, viewsets.ModelViewSet):
             if 'images.unsplash.com' in host:
                 return url
             if 'source.unsplash.com' in host:
-                # Resolve redirect to a concrete image URL for better reliability
-                try:
-                    import requests
-                    resp = requests.get(url, allow_redirects=True, timeout=8, stream=True)
-                    final_url = resp.url or url
-                    try:
-                        resp.close()
-                    except Exception:
-                        pass
-                    return final_url
-                except Exception:
-                    # Fall back to original URL
-                    return url
+                # Avoid network calls in Render free tier; return the source URL directly
+                return url
             if 'unsplash.com' in host and '/photos/' in path:
                 parts = [p for p in path.split('/') if p]
                 # parts like ['photos', '<id>', ...]

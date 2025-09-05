@@ -1,22 +1,18 @@
 #!/usr/bin/env bash
 set -e
 
-# Ensure we are in backend dir
-cd "$(dirname "$0")"
-
 echo "[startup] Running migrations..."
 python manage.py migrate --noinput
 
-# Import data if data/ exists
-if [ -d "../data" ] || [ -d "./data" ]; then
-  DATA_DIR="../data"
-  if [ -d "./data" ]; then
-    DATA_DIR="./data"
-  fi
-  echo "[startup] Importing JSON listings from ${DATA_DIR}..."
-  python manage.py import_data --data-dir "$DATA_DIR" || true
+# Import data if data/ exists (from backend directory)
+if [ -d "./data" ]; then
+  echo "[startup] Importing JSON listings from ./data..."
+  python manage.py import_data --data-dir "./data" || true
+elif [ -d "../data" ]; then
+  echo "[startup] Importing JSON listings from ../data..."
+  python manage.py import_data --data-dir "../data" || true
 else
-  echo "[startup] No data/ directory found. Skipping import."
+  echo "[startup] No data directory found. Skipping import."
 fi
 
 echo "[startup] Starting gunicorn..."

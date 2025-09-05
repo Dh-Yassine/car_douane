@@ -21,6 +21,9 @@ from django.conf.urls.static import static
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from listings.views import create_superuser_api, run_migrations_api
+from django.core.management import call_command
+from django.views.decorators.csrf import csrf_exempt
+import os
 
 def cors_test(request):
     """Simple endpoint to test CORS"""
@@ -71,12 +74,41 @@ def root_redirect(request):
     """Redirect root to API"""
     return redirect('/api/')
 
+@csrf_exempt
+def import_data_api(request):
+    """Import data from data/ folder via HTTP"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Use POST'}, status=405)
+    try:
+        # Try to import from ../data (repo root) first, then ./data
+        data_dir = "../data"
+        if not os.path.exists(data_dir):
+            data_dir = "./data"
+        
+        if not os.path.exists(data_dir):
+            return JsonResponse({
+                'success': False, 
+                'message': f'No data directory found. Tried: ../data and ./data'
+            }, status=404)
+        
+        call_command('import_data', '--data-dir', data_dir, verbosity=1)
+        return JsonResponse({
+            'success': True, 
+            'message': f'Data imported successfully from {data_dir}'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'message': f'Import failed: {str(e)}'
+        }, status=500)
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/cors-test/', cors_test, name='cors_test'),
     path('api/test/', api_cors_test, name='api_cors_test'),
     path('api/create-superuser/', create_superuser_api, name='create_superuser'),
     path('api/run-migrations/', run_migrations_api, name='run_migrations'),
+    path('api/import-data/', import_data_api, name='import_data'),
     path('api/', api_root, name='api_root'),
     path('', root_redirect, name='root_redirect'),
     path('', include('listings.urls')),

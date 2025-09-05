@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Admin User - Car Douane</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .credentials {
+            background: #e2e3e5;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Create Admin User</h1>
+        <p>Click the button below to create an admin user for your Car Douane application.</p>
+        
+        <button onclick="createSuperuser()">Create Admin User</button>
+        
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        async function createSuperuser() {
+            const button = document.querySelector('button');
+            const result = document.getElementById('result');
+            
+            button.disabled = true;
+            button.textContent = 'Creating...';
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch('https://car-douane.onrender.com/api/create-superuser/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    result.className = 'result success';
+                    result.innerHTML = `
+                        <h3>✅ Admin User Created Successfully!</h3>
+                        <div class="credentials">
+                            <strong>Username:</strong> ${data.credentials.username}<br>
+                            <strong>Email:</strong> ${data.credentials.email}<br>
+                            <strong>Password:</strong> ${data.credentials.password}
+                        </div>
+                        <p><strong>🔗 Admin Panel:</strong> <a href="${data.admin_url}" target="_blank">${data.admin_url}</a></p>
+                        <p>You can now log in to the admin panel and add your auction listings!</p>
+                    `;
+                } else {
+                    result.className = 'result error';
+                    result.innerHTML = `
+                        <h3>⚠️ ${data.message}</h3>
+                        <p><strong>🔗 Admin Panel:</strong> <a href="${data.admin_url}" target="_blank">${data.admin_url}</a></p>
+                    `;
+                }
+            } catch (error) {
+                result.className = 'result error';
+                result.innerHTML = `
+                    <h3>❌ Error</h3>
+                    <p>Failed to create admin user: ${error.message}</p>
+                    <p>Please try again in a few moments.</p>
+                `;
+            }
+            
+            result.style.display = 'block';
+            button.disabled = false;
+            button.textContent = 'Create Admin User';
+        }
+    </script>
+</body>
+</html>

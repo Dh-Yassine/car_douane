@@ -17,6 +17,7 @@ from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.core.files.base import ContentFile
 from django.core.management import call_command
+from django.conf import settings
 from .models import Listing, PDFUpload, AuctionGroup
 from .serializers import (
     ListingSerializer, ListingListSerializer, ListingCreateSerializer, PDFUploadSerializer,
@@ -555,6 +556,35 @@ class PDFUploadViewSet(CORSViewSetMixin, viewsets.ModelViewSet):
         # Import listings
         created = self._import_listings(pdf_upload, data)
         return Response({'pdf_upload_id': pdf_upload.id, 'imported': created})
+
+    @action(detail=False, methods=['post'])
+    def import_from_data_dir(self, request):
+        """Scan <BASE_DIR>/data for *.json and import all files.
+        Optional: data_dir override via POST {"data_dir": "/path"}, dry_run: true/false
+        """
+        try:
+            data_dir = request.data.get('data_dir')
+            dry_run = bool(request.data.get('dry_run'))
+        except Exception:
+            data_dir = None
+            dry_run = False
+
+        base_dir = getattr(settings, 'BASE_DIR', None)
+        if not data_dir:
+            if base_dir:
+                data_dir = os.path.join(base_dir, 'data')
+            else:
+                current_file = os.path.abspath(__file__)
+                backend_dir = os.path.dirname(os.path.dirname(current_file))
+                project_root = os.path.dirname(backend_dir)
+                data_dir = os.path.join(project_root, 'data')
+
+        try:
+            # Reuse the management command for consistency
+            call_command('import_data', data_dir=data_dir, dry_run=dry_run)
+            return Response({'success': True, 'data_dir': data_dir, 'dry_run': dry_run})
+        except Exception as e:
+            return Response({'success': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     @action(detail=True, methods=['post'])
     def process(self, request, pk=None):
         """Process uploaded PDF to extract listings"""

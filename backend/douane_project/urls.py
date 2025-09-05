@@ -80,15 +80,15 @@ def import_data_api(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'Use POST'}, status=405)
     try:
-        # Try to import from ../data (repo root) first, then ./data
-        data_dir = "../data"
+        # Try to import from ./data (backend directory) first, then ../data
+        data_dir = "./data"
         if not os.path.exists(data_dir):
-            data_dir = "./data"
+            data_dir = "../data"
         
         if not os.path.exists(data_dir):
             return JsonResponse({
                 'success': False, 
-                'message': f'No data directory found. Tried: ../data and ./data'
+                'message': f'No data directory found. Tried: ./data and ../data'
             }, status=404)
         
         call_command('import_data', '--data-dir', data_dir, verbosity=1)

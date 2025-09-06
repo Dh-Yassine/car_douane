@@ -147,26 +147,40 @@ const HomePage = () => {
               <h1 className="hero-title">Discover Tunisian Customs<span className="hero-highlight"> Auctions</span></h1>
               <p className="hero-description">Browse vehicles, goods and tools from Tunisian customs auctions.</p>
               <div className="hero-search">
-                <div className="search-container" style={{ marginBottom: '0.75rem' }}>
-                  <Search className="search-icon" size={20} />
-                  <input type="text" placeholder="Search for vehicles, goods, or tools..." value={filters.search} onChange={(e) => handleFiltersChange({ search: e.target.value })} className="search-input" />
-                  <div style={{ display: 'flex', gap: '0.5rem', paddingRight: '0.5rem' }}>
-                    <select value={filters.listing_type} onChange={(e) => handleFiltersChange({ listing_type: e.target.value })} className="sort-select">
+                <div className="search-container">
+                  <div className="search-input-wrapper">
+                    <Search className="search-icon" size={20} />
+                    <input 
+                      type="text" 
+                      placeholder="Search for vehicles, goods, or tools..." 
+                      value={filters.search} 
+                      onChange={(e) => handleFiltersChange({ search: e.target.value })} 
+                      className="search-input" 
+                    />
+                  </div>
+                  
+                  <div className="search-filters">
+                    <select value={filters.listing_type} onChange={(e) => handleFiltersChange({ listing_type: e.target.value })}>
                       <option value="">All Types</option>
                       <option value="vehicle">Vehicle</option>
                       <option value="goods">Goods</option>
                       <option value="tools">Tools</option>
                       <option value="other">Other</option>
                     </select>
-                    <select value={filters.brand} onChange={(e) => handleFiltersChange({ brand: e.target.value })} className="sort-select">
+                    
+                    <select value={filters.brand} onChange={(e) => handleFiltersChange({ brand: e.target.value })}>
                       <option value="">All Brands</option>
                       {brands.map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
-                    <select value={filters.city} onChange={(e) => handleFiltersChange({ city: e.target.value })} className="sort-select">
+                    
+                    <select value={filters.city} onChange={(e) => handleFiltersChange({ city: e.target.value })}>
                       <option value="">All Cities</option>
                       {cities.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <button className="btn btn-outline" onClick={clearFilters}>Clear</button>
+                    
+                    <button className="clear-filters-btn" onClick={clearFilters}>
+                      Clear Filters
+                    </button>
                   </div>
                 </div>
               </div>

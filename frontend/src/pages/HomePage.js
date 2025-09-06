@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Upload, Search, Filter, Grid, List } from "lucide-react";
 import { listingsAPI } from "../services/api";
+import HeroSection from "../components/HeroSection";
 import ListingCard from "../components/ListingCard";
 import "./HomePage.css";
 
@@ -138,82 +139,8 @@ const HomePage = () => {
 
   return (
     <div className="home-page">
-      {/* Hero Section, keep */}
-      <section className="hero-section">
-        <div className="hero-background"><div className="hero-particles"></div></div>
-        <div className="container">
-          <div className="hero-content" style={{ gridTemplateColumns: '1fr' }}>
-            <div className="hero-text" style={{ maxWidth: 'none' }}>
-              <h1 className="hero-title">Discover Tunisian Customs<span className="hero-highlight"> Auctions</span></h1>
-              <p className="hero-description">Browse vehicles, goods and tools from Tunisian customs auctions.</p>
-              <div className="hero-search">
-                <div className="search-container">
-                  <div className="search-input-wrapper">
-                    <Search className="search-icon" size={20} />
-                    <input 
-                      type="text" 
-                      placeholder="Search for vehicles, goods, or tools..." 
-                      value={filters.search} 
-                      onChange={(e) => handleFiltersChange({ search: e.target.value })} 
-                      className="search-input" 
-                    />
-                  </div>
-                  
-                  <div className="search-filters">
-                    <select value={filters.listing_type} onChange={(e) => handleFiltersChange({ listing_type: e.target.value })}>
-                      <option value="">All Types</option>
-                      <option value="vehicle">Vehicle</option>
-                      <option value="goods">Goods</option>
-                      <option value="tools">Tools</option>
-                      <option value="other">Other</option>
-                    </select>
-                    
-                    <select value={filters.brand} onChange={(e) => handleFiltersChange({ brand: e.target.value })}>
-                      <option value="">All Brands</option>
-                      {brands.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
-                    
-                    <select value={filters.city} onChange={(e) => handleFiltersChange({ city: e.target.value })}>
-                      <option value="">All Cities</option>
-                      {cities.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    
-                    <button className="clear-filters-btn" onClick={clearFilters}>
-                      Clear Filters
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Beautiful Total Listings Display */}
-              <div className="hero-listings-count">
-                <div className="listings-count-container">
-                  <div className="listings-count-number">{totalCount}</div>
-                  <div className="listings-count-label">Available Listings</div>
-                </div>
-              </div>
-              
-              {/* Cahier des Charges Button */}
-              <div className="hero-cahier-section">
-                <a 
-                  href="https://www.douane.gov.tn/wp-content/uploads/2025/08/2025-08-15_AV_OP_Sousse_N%C2%B008-2025_CG.pdf" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="cahier-btn"
-                >
-                  <div className="cahier-btn-content">
-                    <div className="cahier-btn-icon">📋</div>
-                    <div className="cahier-btn-text">
-                      <span className="cahier-btn-title">Cahier des Charges</span>
-                      <span className="cahier-btn-subtitle">View Auction Specifications</span>
-                    </div>
-                  </div>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Modern Hero Section */}
+      <HeroSection />
 
       {/* Main Content without left sidebar to maximize width */}
       <main className="main-content">

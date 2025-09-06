@@ -1,4 +1,4 @@
-/* ===== MODERN HERO SECTION STYLES ===== */
+/* ===== HERO SECTION STYLES - MATCHING EXISTING DESIGN ===== */
 
 .hero-section {
   position: relative;
@@ -7,13 +7,12 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: linear-gradient(135deg, 
-    #0f172a 0%, 
-    #1e293b 25%, 
-    #334155 50%, 
-    #1e293b 75%, 
-    #0f172a 100%
-  );
+  background: var(--dark-bg);
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+  background-attachment: fixed;
 }
 
 .hero-background {
@@ -60,9 +59,9 @@
   position: relative;
   z-index: 2;
   width: 100%;
-  max-width: 1200px;
+  max-width: var(--container-max-width);
   margin: 0 auto;
-  padding: 2rem;
+  padding: var(--space-8);
 }
 
 .hero-content {
@@ -70,7 +69,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 3rem;
+  gap: var(--space-12);
 }
 
 /* ===== HERO TEXT ===== */
@@ -81,15 +80,15 @@
 
 .hero-title {
   font-size: clamp(2.5rem, 5vw, 4.5rem);
-  font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 1.5rem;
-  color: #ffffff;
+  font-weight: var(--font-weight-extrabold);
+  line-height: var(--line-height-tight);
+  margin-bottom: var(--space-6);
+  color: var(--dark-text);
   text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .hero-highlight {
-  background: linear-gradient(135deg, #3b82f6, #10b981, #8b5cf6);
+  background: linear-gradient(135deg, var(--primary-400), var(--accent-400));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -104,7 +103,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(135deg, #3b82f6, #10b981);
+  background: linear-gradient(135deg, var(--primary-400), var(--accent-400));
   border-radius: 2px;
   animation: expand 2s ease-out;
 }
@@ -116,8 +115,8 @@
 
 .hero-description {
   font-size: clamp(1rem, 2vw, 1.25rem);
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.8);
+  line-height: var(--line-height-relaxed);
+  color: var(--dark-text-secondary);
   max-width: 600px;
   margin: 0 auto;
 }
@@ -130,22 +129,19 @@
 }
 
 .search-container {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
-  padding: 2rem;
-  backdrop-filter: blur(20px);
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  transition: all 0.3s ease;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-8);
+  backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-lg);
+  transition: all var(--transition-normal);
 }
 
 .search-container:hover {
   transform: translateY(-2px);
-  box-shadow: 
-    0 12px 40px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--primary-400);
 }
 
 .search-header {

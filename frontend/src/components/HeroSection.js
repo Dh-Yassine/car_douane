@@ -1,27 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, X, TrendingUp, Users, Calendar } from 'lucide-react';
+import { listingsAPI } from '../services/api';
 
-const HeroSection = () => {
-  const [filters, setFilters] = useState({
+const HeroSection = ({ onFiltersChange, filters, brands, cities, totalCount }) => {
+  const [localFilters, setLocalFilters] = useState(filters || {
     search: "",
     listing_type: "",
     brand: "",
     city: "",
   });
 
-  const brands = ["Audi", "BMW", "Mercedes", "Toyota", "Honda", "Nissan", "Hyundai", "Kia"];
-  const cities = ["Tunis", "Sfax", "Sousse", "Bizerte", "Gabès", "Kairouan", "Gafsa"];
-  const totalCount = 1247;
+  useEffect(() => {
+    if (filters) {
+      setLocalFilters(filters);
+    }
+  }, [filters]);
 
   const handleFiltersChange = (newFilters) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
+    const updatedFilters = { ...localFilters, ...newFilters };
+    setLocalFilters(updatedFilters);
+    if (onFiltersChange) {
+      onFiltersChange(updatedFilters);
+    }
   };
 
   const clearFilters = () => {
-    setFilters({ search: "", listing_type: "", brand: "", city: "" });
+    const clearedFilters = { search: "", listing_type: "", brand: "", city: "" };
+    setLocalFilters(clearedFilters);
+    if (onFiltersChange) {
+      onFiltersChange(clearedFilters);
+    }
   };
 
-  const hasActiveFilters = Object.values(filters).some(value => value !== '');
+  const hasActiveFilters = Object.values(localFilters).some(value => value !== '');
 
   return (
     <section className="hero-section">
@@ -59,11 +70,11 @@ const HeroSection = () => {
                 <input
                   type="text"
                   placeholder="Search for vehicles, goods, or tools..."
-                  value={filters.search}
+                  value={localFilters.search}
                   onChange={(e) => handleFiltersChange({ search: e.target.value })}
                   className="search-input"
                 />
-                {filters.search && (
+                {localFilters.search && (
                   <button 
                     className="clear-search-btn"
                     onClick={() => handleFiltersChange({ search: "" })}
@@ -80,7 +91,7 @@ const HeroSection = () => {
                     Category
                   </label>
                   <select
-                    value={filters.listing_type}
+                    value={localFilters.listing_type}
                     onChange={(e) => handleFiltersChange({ listing_type: e.target.value })}
                     className="filter-select"
                   >
@@ -98,12 +109,12 @@ const HeroSection = () => {
                     Brand
                   </label>
                   <select
-                    value={filters.brand}
+                    value={localFilters.brand}
                     onChange={(e) => handleFiltersChange({ brand: e.target.value })}
                     className="filter-select"
                   >
                     <option value="">All Brands</option>
-                    {brands.map(brand => (
+                    {brands && brands.map(brand => (
                       <option key={brand} value={brand}>{brand}</option>
                     ))}
                   </select>
@@ -115,12 +126,12 @@ const HeroSection = () => {
                     Location
                   </label>
                   <select
-                    value={filters.city}
+                    value={localFilters.city}
                     onChange={(e) => handleFiltersChange({ city: e.target.value })}
                     className="filter-select"
                   >
                     <option value="">All Cities</option>
-                    {cities.map(city => (
+                    {cities && cities.map(city => (
                       <option key={city} value={city}>{city}</option>
                     ))}
                   </select>
@@ -146,7 +157,7 @@ const HeroSection = () => {
                   <TrendingUp size={24} />
                 </div>
                 <div className="stat-content">
-                  <div className="stat-number">{totalCount}</div>
+                  <div className="stat-number">{totalCount || 0}</div>
                   <div className="stat-label">Available Listings</div>
                 </div>
               </div>

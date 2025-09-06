@@ -140,7 +140,13 @@ const HomePage = () => {
   return (
     <div className="home-page">
       {/* Modern Hero Section */}
-      <HeroSection />
+      <HeroSection 
+        onFiltersChange={handleFiltersChange}
+        filters={filters}
+        brands={brands}
+        cities={cities}
+        totalCount={totalCount}
+      />
 
       {/* Main Content without left sidebar to maximize width */}
       <main className="main-content">
